@@ -1,6 +1,6 @@
 #!/usr/bin/env bb
 
-(ns eamonnsullivan.backup-scripts
+(ns eamonnsullivan.backup
   {:author "Eamonn Sullivan"}
   (:import (java.time.format DateTimeFormatter)
            (java.time LocalDateTime))
@@ -25,7 +25,9 @@
       (delete-files-recursively f2 silently)))
   (io/delete-file f1 silently))
 
-(defn get-backup-usage [backup]
+(defn get-backup-usage
+  "How much disk space is this back up using?"
+  [backup]
   (as-> (io/file (format "%s/%s" base-path backup)) $
     (file-seq $)
     (map #(.length %) $)
@@ -51,19 +53,26 @@
         (io/make-parents backupdir))
       (spit (format "%s/checkMonth.txt" base-path) now))))
 
-(defn make-hard-link [backup]
+(defn make-hard-link
+  "Make a hard link of the current back up."
+  [backup]
   (let [bdir (format "%s-%s" (get-now-as-string) backup)
         linkto (format "%s/old/%s" base-path bdir)
         linkfrom (format "%s/%s/" base-path backup)]
     (io/make-parents (io/as-file linkto))
     (link linkfrom linkto)))
 
-(defn get-oldest-backup-dir []
+(defn get-oldest-backup-dir
+  "Find the oldest backup in /old."
+  []
   (let [old-backups (.listFiles (io/as-file (format "%s/old" base-path)))
         sorted (sort-by #(.lastModified %) old-backups)]
     (first sorted)))
 
 (defn check-free [backup]
+  "Check the free space on the back up filesystem. If it isn't at
+  least twice the size of the last (current) backup, delete the oldest
+  backup and try again. Repeat until enough space."
   (let [curr-used (get-backup-usage backup)
         est-need (* curr-used 2)]
     (loop [curr-free (.getFreeSpace (io/as-file base-path))]
@@ -74,8 +83,7 @@
           (delete-files-recursively (get-oldest-backup-dir))
           (recur (.getFreeSpace (io/as-file base-path))))))))
 
-
-
+(println (get-current-month))
 
 (comment
   (import (java.time.format DateTimeFormatter))
