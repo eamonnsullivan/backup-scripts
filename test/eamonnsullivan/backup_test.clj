@@ -6,8 +6,8 @@
   (:require [eamonnsullivan.backup :as sut]
             [clojure.test :refer :all]))
 
-(deftest test-get-current-month
-  (with-redefs [sut/date (fn [] (LocalDateTime/of 2020 1 8 10 15))]
-    (testing "returns the year and month"
-      (is (= "2020-01"
-             (sut/get-current-month))))))
+(deftest test-new-month?
+  (with-redefs [sut/get-current-month (fn [] "2020-01")]
+    (testing "compares the year and month"
+      (is (= false
+             (sut/new-month? "2020-01"))))))

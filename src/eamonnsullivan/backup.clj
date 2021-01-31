@@ -8,15 +8,22 @@
             [clojure.java.shell :refer [sh]]))
 
 (def base-path "/media/backup")
-(def date (LocalDateTime/now))
 (def month-formatter (DateTimeFormatter/ofPattern "yyyy-MM"))
 (def now-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-MM"))
 
 (defn get-current-month []
-  (.format date month-formatter))
+  (.format (LocalDateTime/now) month-formatter))
 
 (defn get-now-as-string []
   (.format (LocalDateTime/now) now-formatter))
+
+(defn write-check-month-file [content]
+  (spit (format "%s/checkMonth.txt" base-path) content))
+
+(defn new-month?
+  [last]
+  (let [now (get-current-month)]
+    (not= now last)))
 
 (defn delete-files-recursively
   [f1 & [silently]]
@@ -45,13 +52,13 @@
   (let [now (get-current-month)
         check (io/as-file (format "%s/checkMonth.txt" base-path))
         last (if (.exists check) (slurp check) "")]
-    (when (not= now last)
+    (when (new-month? last)
       (println "Staring a new monthly backup set...")
       (let [backupdir (io/as-file (format "%s/%s/." base-path backup))]
         (when (.exists backupdir)
           (delete-files-recursively (io/as-file (format "%s/%s" base-path backup))))
         (io/make-parents backupdir))
-      (spit (format "%s/checkMonth.txt" base-path) now))))
+      (write-check-month-file now))))
 
 (defn make-hard-link
   "Make a hard link of the current back up."
