@@ -101,8 +101,6 @@
   (let [rsync-command (into [] (conj rsync backup-from (format "%s/%s" base-path backup-to)))
         _ (println "Running command:" (string/join " " rsync-command))
         result (apply sh rsync-command)]
-    (println "Result:" (:out result))
-    (println "Errors:" (:err result))
     (if (= 0 (:exit result))
       (do
         (println (format "Successfully finished backup of %s at %s" backup-from (get-now-as-string)))
