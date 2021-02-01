@@ -5,9 +5,10 @@
   (:import (java.time.format DateTimeFormatter)
            (java.time LocalDateTime))
   (:require [clojure.java.io :as io]
-            [clojure.java.shell :refer [sh]]))
+            [clojure.java.shell :refer [sh]]
+            [clojure.string :as string]))
 
-(def base-path "/home/eamonn/backup-test")
+(def base-path "/media/backup")
 (def rsync ["rsync" "-avzpH" "--partial" "--delete" "--exclude-from=/etc/rsync-backup-excludes.txt"])
 (def month-formatter (DateTimeFormatter/ofPattern "yyyy-MM"))
 (def now-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-MM"))
@@ -18,8 +19,8 @@
 (defn get-now-as-string []
   (.format (LocalDateTime/now) now-formatter))
 
-(defn write-check-month-file [content]
-  (spit (format "%s/checkMonth.txt" base-path) content))
+(defn write-check-month-file [content backup]
+  (spit (format "%s/checkMonth_%s.txt" base-path backup) content))
 
 (defn new-month?
   [last]
@@ -50,7 +51,7 @@
   "Check whether we've started a new month. If we have, create a new
   backup from scratch."
   [backup]
-  (let [check (io/as-file (format "%s/checkMonth.txt" base-path))
+  (let [check (io/as-file (format "%s/checkMonth_%s.txt" base-path backup))
         last (if (.exists check) (slurp check) "")]
     (when (new-month? last)
       (println "Staring a new monthly backup set...")
@@ -58,7 +59,7 @@
         (when (.exists backupdir)
           (delete-files-recursively (io/as-file (format "%s/%s" base-path backup))))
         (io/make-parents backupdir))
-      (write-check-month-file (get-current-month)))))
+      (write-check-month-file (get-current-month) backup))))
 
 (defn make-hard-link
   "Make a hard link of the current back up."
@@ -95,17 +96,22 @@
   (when (or (not backup-from) (not backup-to))
     (println "Usage: <user@hostname.local:/home> <backup-name>")
     (System/exit 1))
-  (println "Backing up from:" backup-from)
-  (println "Backing up to:" backup-to)
+  (println (format "Starting backup of %s to %s on %s" backup-from backup-to (get-now-as-string)))
   (check-month backup-to)
   (let [rsync-command (into [] (conj rsync backup-from (format "%s/%s" base-path backup-to)))
-        _ (println "Running command:" rsync-command)
+        _ (println "Running command:" (string/join " " rsync-command))
         result (apply sh rsync-command)]
     (println "Result:" (:out result))
-    (println "Errors:" (:err result)))
-  (make-hard-link backup-to)
-  (check-free backup-to))
-(println (get-current-month))
+    (println "Errors:" (:err result))
+    (if (= 0 (:exit result))
+      (do
+        (println (format "Successfully finished backup of %s at %s" backup-from (get-now-as-string)))
+        (println (:out result))
+        (make-hard-link backup-to)
+        (check-free backup-to))
+      (do
+        (println (format "The backup of %s ended in an error: %s" backup-from (:err result)))
+        (println "Not making a hard link or checking free space.")))))
 
 (comment
   (import (java.time.format DateTimeFormatter))
