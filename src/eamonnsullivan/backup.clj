@@ -27,12 +27,10 @@
   (let [now (get-current-month)]
     (not= now last)))
 
-(defn delete-files-recursively
-  [f1 & [silently]]
-  (when (.isDirectory (io/file f1))
-    (doseq [f2 (.listFiles (io/file f1))]
-      (delete-files-recursively f2 silently)))
-  (io/delete-file f1 silently))
+(defn delete-backup
+  [backup]
+  (sh "rm" "-rf" (format "%s/%s/*" base-path backup)))
+
 
 (defn get-backup-usage
   "How much disk space is this back up using?"
@@ -55,9 +53,9 @@
         last (if (.exists check) (slurp check) "")]
     (when (new-month? last)
       (println "Staring a new monthly backup set...")
-      (let [backupdir (io/as-file (format "%s/%s/." base-path backup))]
+      (let [backupdir (format "%s/%s/." base-path backup)]
         (when (.exists backupdir)
-          (delete-files-recursively (io/as-file (format "%s/%s" base-path backup))))
+          (delete-backup backup))
         (io/make-parents backupdir))
       (write-check-month-file (get-current-month) backup))))
 
