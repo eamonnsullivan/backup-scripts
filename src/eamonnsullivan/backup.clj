@@ -53,10 +53,10 @@
         last (if (.exists check) (slurp check) "")]
     (when (new-month? last)
       (println "Staring a new monthly backup set...")
-      (let [backupdir (format "%s/%s/." base-path backup)]
+      (let [backupdir (format "%s/%s" base-path backup)]
         (when (.exists backupdir)
           (delete-backup backup))
-        (io/make-parents backupdir))
+        (io/make-parents (format "%s/.keep" backupdir)))
       (write-check-month-file (get-current-month) backup))))
 
 (defn make-hard-link
