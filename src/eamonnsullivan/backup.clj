@@ -7,7 +7,8 @@
   (:require [clojure.java.io :as io]
             [clojure.java.shell :refer [sh]]))
 
-(def base-path "/media/backup")
+(def base-path "/home/eamonn/backup-test")
+(def rsync ["rsync" "-avzpH" "--partial" "--delete" "--exclude-from=/etc/rsync-backup-excludes.txt"])
 (def month-formatter (DateTimeFormatter/ofPattern "yyyy-MM"))
 (def now-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-MM"))
 
@@ -41,16 +42,15 @@
     (reduce + $)))
 
 (defn link
-  "Create a \"hard\" link from path to target."
-  [existing-file new-file]
-  (sh "cp" "-al" existing-file new-file))
+  "Create a hard link from path to target."
+  [path target]
+  (sh "cp" "-al" path target))
 
 (defn check-month
   "Check whether we've started a new month. If we have, create a new
   backup from scratch."
   [backup]
-  (let [now (get-current-month)
-        check (io/as-file (format "%s/checkMonth.txt" base-path))
+  (let [check (io/as-file (format "%s/checkMonth.txt" base-path))
         last (if (.exists check) (slurp check) "")]
     (when (new-month? last)
       (println "Staring a new monthly backup set...")
@@ -58,7 +58,7 @@
         (when (.exists backupdir)
           (delete-files-recursively (io/as-file (format "%s/%s" base-path backup))))
         (io/make-parents backupdir))
-      (write-check-month-file now))))
+      (write-check-month-file (get-current-month)))))
 
 (defn make-hard-link
   "Make a hard link of the current back up."
@@ -76,20 +76,35 @@
         sorted (sort-by #(.lastModified %) old-backups)]
     (first sorted)))
 
-(defn check-free [backup]
-  "Check the free space on the back up filesystem. If it isn't at
+(defn check-free
+  "Check the free space on the backup device. If it isn't at
   least twice the size of the last (current) backup, delete the oldest
   backup and try again. Repeat until enough space."
+  [backup]
   (let [curr-used (get-backup-usage backup)
         est-need (* curr-used 2)]
     (loop [curr-free (.getFreeSpace (io/as-file base-path))]
       (if (> curr-free est-need)
         true
         (do
-          (println "Not enough disk space available, so removing the oldest backups.")
+          (println "Not enough disk space available, so removing the oldest backup.")
           (delete-files-recursively (get-oldest-backup-dir))
           (recur (.getFreeSpace (io/as-file base-path))))))))
 
+(let [[backup-from backup-to] *command-line-args*]
+  (when (or (not backup-from) (not backup-to))
+    (println "Usage: <user@hostname.local:/home> <backup-name>")
+    (System/exit 1))
+  (println "Backing up from:" backup-from)
+  (println "Backing up to:" backup-to)
+  (check-month backup-to)
+  (let [rsync-command (into [] (conj rsync backup-from (format "%s/%s" base-path backup-to)))
+        _ (println "Running command:" rsync-command)
+        result (apply sh rsync-command)]
+    (println "Result:" (:out result))
+    (println "Errors:" (:err result)))
+  (make-hard-link backup-to)
+  (check-free backup-to))
 (println (get-current-month))
 
 (comment
@@ -97,5 +112,5 @@
   (import (java.time LocalDateTime))
   (require '[clojure.java.io :as io])
   (require '[clojure.java.shell :refer [sh]])
-  (def base-path ".")
+  (def base-path "/home/eamonn/backup-test/")
   )
