@@ -139,10 +139,10 @@
         result (apply sh rsync-command)]
     (if (= 0 (:exit result))
       (do
-        (println (format "Successfully finished backup of %s at %s" backup-from (get-now-as-string)))
         (println (:out result))
         (make-hard-link backup-to)
-        (check-free backup-to))
+        (check-free backup-to)
+        (println (format "Successfully finished backup of %s at %s" backup-from (get-now-as-string))))
       (do
         (println (format "The backup of %s ended in an error: %s" backup-from (:err result)))
         (println "Not making a hard link or checking free space."))))))
