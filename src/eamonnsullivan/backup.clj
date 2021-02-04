@@ -23,7 +23,7 @@
 (def base-path "/media/backup")
 (def rsync-command ["rsync" "-avzpH" "--partial" "--delete" "--exclude-from=/etc/rsync-backup-excludes.txt"])
 (def month-formatter (DateTimeFormatter/ofPattern "yyyy-MM"))
-(def date-time-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-MM"))
+(def date-time-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-mm-s"))
 
 (defn get-current-month
   "Get a string that includes the year and month."
@@ -126,7 +126,7 @@
   (when (or (not backup-from) (not backup-to))
     (println "Usage: <user@hostname.local:/home> <backup-name>")
     (System/exit 1))
-  (println (format "Starting backup of %s to %s on %s" backup-from backup-to (.format (LocalDateTime/now) date-time-formatter)))
+  (println (format "Starting backup of %s to %s on %s" backup-from backup-to (.toString (LocalDateTime/now))))
   (check-month backup-to)
   (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))
         _ (println "Running command:" (string/join " " rsync-command))
@@ -136,7 +136,7 @@
         (println (:out result))
         (make-hard-link backup-to)
         (check-free backup-to)
-        (println (format "Successfully finished backup of %s at %s" backup-from (.format (LocalDateTime/now) date-time-formatter))))
+        (println (format "Successfully finished backup of %s at %s" backup-from (.toString (LocalDateTime/now)))))
       (do
         (println (format "The backup of %s ended in an error: %s" backup-from (:err result)))
         (println "Not making a hard link or checking free space."))))))
