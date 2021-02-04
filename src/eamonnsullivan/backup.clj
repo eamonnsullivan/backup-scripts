@@ -1,6 +1,18 @@
 #!/usr/bin/env bb
 
 (ns eamonnsullivan.backup
+  "A wrapper around rsync that manages multiple backups of multiple
+  hosts. After each back up, it creates a hard link. On each new
+  month, it starts a full back up from scratch. (This is to avoid any
+  potential issues with bad sectors.) After each backup, we check the
+  free space available. If it is less than double the space required
+  by the most recent backup, we remove the oldest backups until we
+  have that much room.
+
+  Usage: <backup-from> <name-of-backup>
+
+  Examples: backup.clj root@thinkpad.local:/home thinkpad
+            backup.clj sullie09@mc-s105910.local:~ workmac"
   {:author "Eamonn Sullivan"}
   (:import (java.time.format DateTimeFormatter)
            (java.time LocalDateTime))
@@ -9,31 +21,45 @@
             [clojure.string :as string]))
 
 (def base-path "/media/backup")
-(def rsync ["rsync" "-avzpH" "--partial" "--delete" "--exclude-from=/etc/rsync-backup-excludes.txt"])
+(def rsync-command ["rsync" "-avzpH" "--partial" "--delete" "--exclude-from=/etc/rsync-backup-excludes.txt"])
 (def month-formatter (DateTimeFormatter/ofPattern "yyyy-MM"))
-(def now-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-MM"))
+(def date-time-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-MM"))
 
-(defn get-current-month []
+(defn get-current-month
+  "Get a string that includes the year and month."
+  []
   (.format (LocalDateTime/now) month-formatter))
 
-(defn get-now-as-string []
-  (.format (LocalDateTime/now) now-formatter))
+(defn get-now-as-string
+  "Get a string that includes the year, month and time. Used to create a
+  directory, hard-linked to a particular backup."
+  []
+  (.format (LocalDateTime/now) date-time-formatter))
 
-(defn write-check-month-file [content backup]
+(defn write-check-month-file
+  "Write out the current year and month into a backup-specific file that
+  we can compare against. Used so that we can more easily tell when
+  we've changed months since the last backup."
+  [content backup]
   (spit (format "%s/checkMonth_%s.txt" base-path backup) content))
 
 (defn new-month?
+  "Predicate: Given the contents of this backup's checkMonth file, are
+  we creating the first back up of this month?"
   [last]
   (let [now (get-current-month)]
     (not= now last)))
 
 (defn delete-backup
+  "Remove the current named backup. This is normally done when we are
+  starting the first backup of the month."
   [backup]
-  (sh "rm" "-rf" (format "%s/%s/*" base-path backup)))
-
+  (let [target (format "%s/%s/*" base-path backup)]
+    (println "Removing: " target)
+    (println (sh "bash" "-c" (format "rm -rf %s" target)))))
 
 (defn get-backup-usage
-  "How much disk space is this back up using?"
+  "How much disk space is this backup using?"
   [backup]
   (as-> (io/file (format "%s/%s" base-path backup)) $
     (file-seq $)
@@ -50,13 +76,14 @@
   backup from scratch."
   [backup]
   (let [check (io/as-file (format "%s/checkMonth_%s.txt" base-path backup))
-        last (if (.exists check) (slurp check) "")]
+        last (if (.exists check) (slurp check) nil)]
     (when (new-month? last)
-      (println "Staring a new monthly backup set...")
-      (let [backupdir (format "%s/%s" base-path backup)]
+      (println (format "Staring a new monthly backup set for %s" (format "%s/%s" base-path backup)))
+      (let [backupdir (io/as-file (format "%s/%s" base-path backup))]
         (when (.exists backupdir)
+          (println "Existing backup found, so removing..."  )
           (delete-backup backup))
-        (io/make-parents (format "%s/.keep" backupdir)))
+        (io/make-parents (format "%s/.keep" (.getPath backupdir))))
       (write-check-month-file (get-current-month) backup))))
 
 (defn make-hard-link
@@ -68,12 +95,21 @@
     (io/make-parents (io/as-file linkto))
     (link linkfrom linkto)))
 
-(defn get-oldest-backup-dir
-  "Find the oldest backup in /old."
-  []
-  (let [old-backups (.listFiles (io/as-file (format "%s/old" base-path)))
-        sorted (sort-by #(.lastModified %) old-backups)]
+(defn oldest-dir
+  "Find the oldest (least most recently modified) directory in parent."
+  [parent]
+  (let [dirs (.listFiles (io/as-file parent))
+        sorted (sort-by #(.lastModified %) dirs)]
     (first sorted)))
+
+(defn delete-oldest-backup
+  "Find the oldest backup hard linked in <base-path>/old and remove it."
+  []
+  (let [dir (.getName (oldest-dir (format "%s/old" base-path)))]
+    (println "Oldest backup: " dir)
+    (if (not (nil? dir))
+      (sh "bash" "-c" (format "rm -rf %s/old/%s" base-path dir))
+      (throw (ex-info "Could not remove any more old backups!" {:base-path base-path})))))
 
 (defn check-free
   "Check the free space on the backup device. If it isn't at
@@ -87,16 +123,18 @@
         true
         (do
           (println "Not enough disk space available, so removing the oldest backup.")
-          (delete-files-recursively (get-oldest-backup-dir))
+          (delete-oldest-backup)
           (recur (.getFreeSpace (io/as-file base-path))))))))
 
-(let [[backup-from backup-to] *command-line-args*]
+(defn -main
+  []
+  (let [[backup-from backup-to] *command-line-args*]
   (when (or (not backup-from) (not backup-to))
     (println "Usage: <user@hostname.local:/home> <backup-name>")
     (System/exit 1))
   (println (format "Starting backup of %s to %s on %s" backup-from backup-to (get-now-as-string)))
   (check-month backup-to)
-  (let [rsync-command (into [] (conj rsync backup-from (format "%s/%s" base-path backup-to)))
+  (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))
         _ (println "Running command:" (string/join " " rsync-command))
         result (apply sh rsync-command)]
     (if (= 0 (:exit result))
@@ -107,12 +145,16 @@
         (check-free backup-to))
       (do
         (println (format "The backup of %s ended in an error: %s" backup-from (:err result)))
-        (println "Not making a hard link or checking free space.")))))
+        (println "Not making a hard link or checking free space."))))))
+
+(when (= *file* (System/getProperty "babashka.file"))
+  (-main))
+
 
 (comment
   (import (java.time.format DateTimeFormatter))
   (import (java.time LocalDateTime))
   (require '[clojure.java.io :as io])
   (require '[clojure.java.shell :refer [sh]])
-  (def base-path "/home/eamonn/backup-test/")
+  (def base-path "/home/eamonn/backup-test")
   )
