@@ -30,6 +30,11 @@
   []
   (.format (LocalDateTime/now) month-formatter))
 
+(defn link
+  "Create a hard link from path to target."
+  [path target]
+  (sh "cp" "-al" path target))
+
 (defn write-check-month-file
   "Write out the current year and month into a backup-specific file that
   we can compare against. Used so that we can more easily tell when
@@ -60,11 +65,6 @@
     (map #(.length %) $)
     (reduce + $)))
 
-(defn link
-  "Create a hard link from path to target."
-  [path target]
-  (sh "cp" "-al" path target))
-
 (defn check-month
   "Check whether we've started a new month. If we have, create a new
   backup from scratch."
@@ -72,7 +72,7 @@
   (let [check (io/as-file (format "%s/checkMonth_%s.txt" base-path backup))
         last (if (.exists check) (slurp check) nil)]
     (when (new-month? last)
-      (println (format "Staring a new monthly backup set for %s" (format "%s/%s" base-path backup)))
+      (println (format "Starting a new monthly backup set for %s" (format "%s/%s" base-path backup)))
       (let [backupdir (io/as-file (format "%s/%s" base-path backup))]
         (when (.exists backupdir)
           (println "Existing backup found, so removing..."  )
@@ -123,23 +123,23 @@
 (defn -main
   []
   (let [[backup-from backup-to] *command-line-args*]
-  (when (or (not backup-from) (not backup-to))
-    (println "Usage: <user@hostname.local:/home> <backup-name>")
-    (System/exit 1))
-  (println (format "Starting backup of %s to %s on %s" backup-from backup-to (.toString (LocalDateTime/now))))
-  (check-month backup-to)
-  (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))
-        _ (println "Running command:" (string/join " " rsync-command))
-        result (apply sh rsync-command)]
-    (if (= 0 (:exit result))
-      (do
-        (println (:out result))
-        (make-hard-link backup-to)
-        (check-free backup-to)
-        (println (format "Successfully finished backup of %s at %s" backup-from (.toString (LocalDateTime/now)))))
-      (do
-        (println (format "The backup of %s ended in an error: %s" backup-from (:err result)))
-        (println "Not making a hard link or checking free space."))))))
+    (when (or (not backup-from) (not backup-to))
+      (println "Usage: <user@hostname.local:/home> <backup-name>")
+      (System/exit 1))
+    (println (format "Starting backup of %s to %s on %s" backup-from backup-to (.toString (LocalDateTime/now))))
+    (check-month backup-to)
+    (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))
+          _ (println "Running command:" (string/join " " rsync-command))
+          result (apply sh rsync-command)]
+      (if (= 0 (:exit result))
+        (do
+          (println (:out result))
+          (make-hard-link backup-to)
+          (check-free backup-to)
+          (println (format "Successfully finished backup of %s at %s" backup-from (.toString (LocalDateTime/now)))))
+        (do
+          (println (format "The backup of %s ended in an error: %s" backup-from (:err result)))
+          (println "Not making a hard link or checking free space."))))))
 
 (when (= *file* (System/getProperty "babashka.file"))
   (-main))
