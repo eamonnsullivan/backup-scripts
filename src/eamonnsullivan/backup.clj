@@ -30,12 +30,6 @@
   []
   (.format (LocalDateTime/now) month-formatter))
 
-(defn get-now-as-string
-  "Get a string that includes the year, month and time. Used to create a
-  directory, hard-linked to a particular backup."
-  []
-  (.format (LocalDateTime/now) date-time-formatter))
-
 (defn write-check-month-file
   "Write out the current year and month into a backup-specific file that
   we can compare against. Used so that we can more easily tell when
@@ -89,7 +83,7 @@
 (defn make-hard-link
   "Make a hard link of the current back up."
   [backup]
-  (let [bdir (format "%s-%s" (get-now-as-string) backup)
+  (let [bdir (format "%s-%s" (.format (LocalDateTime/now) date-time-formatter) backup)
         linkto (format "%s/old/%s" base-path bdir)
         linkfrom (format "%s/%s/" base-path backup)]
     (io/make-parents (io/as-file linkto))
@@ -132,7 +126,7 @@
   (when (or (not backup-from) (not backup-to))
     (println "Usage: <user@hostname.local:/home> <backup-name>")
     (System/exit 1))
-  (println (format "Starting backup of %s to %s on %s" backup-from backup-to (get-now-as-string)))
+  (println (format "Starting backup of %s to %s on %s" backup-from backup-to (.format (LocalDateTime/now) date-time-formatter)))
   (check-month backup-to)
   (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))
         _ (println "Running command:" (string/join " " rsync-command))
@@ -142,7 +136,7 @@
         (println (:out result))
         (make-hard-link backup-to)
         (check-free backup-to)
-        (println (format "Successfully finished backup of %s at %s" backup-from (get-now-as-string))))
+        (println (format "Successfully finished backup of %s at %s" backup-from (.format (LocalDateTime/now) date-time-formatter))))
       (do
         (println (format "The backup of %s ended in an error: %s" backup-from (:err result)))
         (println "Not making a hard link or checking free space."))))))
