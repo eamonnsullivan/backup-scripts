@@ -151,7 +151,7 @@
       (System/exit 1))
     (println (format "Starting backup of %s to %s on %s" backup-from backup-to (.toString (LocalDateTime/now))))
     (check-month backup-to)
-    (let [result (retry (rsync! backup-from backup-to) #(= 0 (:exit %)) 3)]
+    (let [result (retry #(rsync! backup-from backup-to) #(= 0 (:exit %)) 3)]
       (if (= 0 (:exit result))
         (do
           (println (:out result))
