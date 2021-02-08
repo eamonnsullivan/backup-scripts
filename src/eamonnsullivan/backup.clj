@@ -128,7 +128,10 @@
     (f)
     (let [result (f)]
       (if (not (success? result))
-        (retry f success? (dec n))
+        (do
+          (println (format "Rsync failed with error [%s], retrying" (:err result)))
+          (Thread/sleep 30000)
+          (retry f success? (dec n)))
         result))))
 
 (defn rsync!
@@ -137,7 +140,7 @@
   output."
   [backup-from backup-to]
   (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))]
-    (println "Trying: " (string/join " " rsync-command))
+    (println "Starting rsync: " (string/join " " rsync-command))
     (apply sh rsync-command)))
 
 (defn -main
