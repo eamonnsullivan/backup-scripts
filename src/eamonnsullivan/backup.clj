@@ -120,6 +120,26 @@
           (delete-oldest-backup)
           (recur (.getFreeSpace (io/as-file base-path))))))))
 
+(defn retry
+  "Retry function f, n times and check whether it succeeded with the
+  predicate success?"
+  [f success? n]
+  (if (zero? n)
+    (f)
+    (let [result (f)]
+      (if (not (success? result))
+        (retry f success? (dec n))
+        result))))
+
+(defn rsync!
+  "The actual rsync of files from somewhere, to somewhere else. This
+  returns a map of the :exit code, standard output (:out) and any :err
+  output."
+  [backup-from backup-to]
+  (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))]
+    (println "Trying: " (string/join " " rsync-command))
+    (apply sh rsync-command)))
+
 (defn -main
   []
   (let [[backup-from backup-to] *command-line-args*]
@@ -128,9 +148,7 @@
       (System/exit 1))
     (println (format "Starting backup of %s to %s on %s" backup-from backup-to (.toString (LocalDateTime/now))))
     (check-month backup-to)
-    (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))
-          _ (println "Running command:" (string/join " " rsync-command))
-          result (apply sh rsync-command)]
+    (let [result (retry (rsync! backup-from backup-to) #(= 0 (:exit %)) 3)]
       (if (= 0 (:exit result))
         (do
           (println (:out result))
