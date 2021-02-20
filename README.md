@@ -36,9 +36,9 @@ I don't use Windows at the moment and don't really mount network drives, either.
 
 ## Back up approach
 
-I used to just mirror everyone's home directory on another device. Just periodically run rsync and sync all of the files to the external hard drive. This works, but it has a couple of disadvantages. One is that if you delete a file on Tuesday and discover on Thursday that you really actually needed that file, it's probably now gone from the back up, as well.
+I used to just mirror everyone's home directory on another device. Just periodically run rsync and sync all of the files to the external hard drive. This works, but it has a couple of disadvantages. One important disadvantage is that if you delete a file on Tuesday and discover on Thursday that you really actually needed that file, it's probably now gone from the back up, as well.
 
-So, instead I took a cue from Apple's Time Machine and take advantage of hard links, a relatively underused facility in most Unix based file systems. Basically, it just give the a file another name, somewhere else. If you delete one of the names, the same file still lives under the other name. And hard links don't take up any extra space (or hardly any).
+So, instead I took a cue from Apple's Time Machine and take advantage of hard links, a relatively underused facility in most Unix based file systems. Basically, it just gives the file another name, somewhere else. If you delete one of the names, the same file still lives under the other name. And hard links don't take up any extra space (or hardly any).
 
 I also mitigate against creeping bad sectors (which happen even on SSDs) by periodically starting over again with a fresh, full back up.
 
@@ -47,6 +47,7 @@ The basic algorithm:
  1. Run rsync to sync the files from one place to another.
  1. Make a hard link of all of the files to another location on the file system, under a directory with the date in the name.
  1. Check the remaining free space on the back up device and compare it with the last full back I just did. If free space is less than twice the size of the last backup, I start removing the oldest back up directories (the ones created in the last step) until I have that much remaining.
+ 1. Once a month, a start a new full back up from scratch. This is to guard against bad sectors in the disk, which can make older files become unreadable, and you would never know until you tried to restore it.
 
 ## Example scripts
 
