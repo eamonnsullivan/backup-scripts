@@ -48,6 +48,13 @@ The basic algorithm:
  1. Make a hard link of all of the files to another location on the file system, under a directory with the date in the name.
  1. Check the remaining free space on the back up device and compare it with the last full back I just did. If free space is less than twice the size of the last backup, I start removing the oldest back up directories (the ones created in the last step) until I have that much remaining.
 
+## Example scripts
+
+ * [LaunchAgent on the Mac laptop](LaunchAgent/)
+ * [Anacron script for the Ubuntu laptops](anacron/)
+ * [Starter script on the server](server/)
+ * [Main back up script](src/eamonnsullivan/backup.clj)
+
 ## License
 
 Copyright © 2021 Eamonn Sullivan
