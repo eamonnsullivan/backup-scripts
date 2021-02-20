@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>backup.workmac</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/ssh</string>
+        <string>einstein.local</string>
+        <string>/media/backup/backup-workmac.sh</string>
+    </array>
+    <key>KeepAlive</key>
+    <dict>
+      <key>SuccessfulExit</key>
+      <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Minute</key>
+      <integer>0</integer>
+      <key>Hour</key>
+      <integer>11</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/usr/local/var/log/backup-workmac.log</string>
+    <key>StandardErrorPath</key>
+    <string>/usr/local/var/log/backup-workmac.log</string>
+</dict>
+</plist>
