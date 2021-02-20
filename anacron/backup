@@ -1,0 +1,8 @@
+#!/bin/sh
+
+/usr/bin/ssh einstein.local /media/backup/backup-thinkpad.sh
+EXITVALUE=$?
+if [ $EXITVALUE != 0 ]; then
+    /usr/bin/logger -t backup "ALERT exited abnormally with [$EXITVALUE]"
+fi
+exit $EXITVALUE

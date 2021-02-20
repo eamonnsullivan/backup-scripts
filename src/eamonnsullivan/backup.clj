@@ -2,12 +2,14 @@
 
 (ns eamonnsullivan.backup
   "A wrapper around rsync that manages multiple backups of multiple
-  hosts. After each back up, it creates a hard link. On each new
-  month, it starts a full back up from scratch. (This is to avoid any
-  potential issues with bad sectors.) After each backup, we check the
-  free space available. If it is less than double the space required
-  by the most recent backup, we remove the oldest backups until we
-  have that much room.
+  hosts. After each backup, it creates a hard link (effectively
+  creating a snapshot of the current difference since the previous
+  backup) and checks the free space available on the storage
+  device. If free space is less than double the size of the most
+  recent backup, we remove older backups.
+
+  At the start of a new month, we begin a fresh backup. This is to
+  avoid any potential issues with bad sectors.
 
   Usage: <backup-from> <name-of-backup>
 
@@ -18,7 +20,8 @@
            (java.time LocalDateTime))
   (:require [clojure.java.io :as io]
             [clojure.java.shell :refer [sh]]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [babashka.fs :as fs]))
 
 (def base-path "/media/backup")
 (def rsync-command ["rsync" "-avzpH" "--partial" "--delete" "--exclude-from=/etc/rsync-backup-excludes.txt"])
@@ -55,14 +58,14 @@
   [backup]
   (let [target (format "%s/%s/*" base-path backup)]
     (println "Removing: " target)
-    (println (sh "bash" "-c" (format "rm -rf %s" target)))))
+    (fs/delete-tree target)))
 
 (defn get-backup-usage
   "How much disk space is this backup using?"
   [backup]
   (as-> (io/file (format "%s/%s" base-path backup)) $
     (file-seq $)
-    (map #(.length %) $)
+    (map #(fs/size %) $)
     (reduce + $)))
 
 (defn check-month
