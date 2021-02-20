@@ -22,7 +22,7 @@ But these aren't back up systems. If I accidentally delete an important file, fo
 
 Also, my wife (who doesn't use Dropbox or anything like it) keeps her entire digital life (word processing documents, presentation, spreadsheets, etc.) on a Thinkpad running Ubuntu. She counts on me to keep those safe. (Well, actually, she just assumes they are safe... I'm the IT Guy in the house and it's my job to worry about such things.)
 
-Mostly, though, I like having control over my own data and I want to understand how it is being stored and moved around. I will probably extend this system to the cloud in the future -- periodically sending monthly back ups offsite -- but I will likely use S3 on my own AWS account for that, keeping it under my understanding and control.
+Mostly, though, I like having control over my own data and I want to understand how it is being stored and moved around. I will probably extend this system to the cloud in the future -- periodically sending monthly backups offsite -- but I will likely use S3 on my own AWS account for that, keeping it under my understanding and control.
 
 ## Prerequisites
 
