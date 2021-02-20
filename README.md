@@ -47,7 +47,7 @@ The basic algorithm:
  1. Run rsync to sync the files from one place to another.
  1. Make a hard link of all of the files to another location on the file system, under a directory with the date in the name.
  1. Check the remaining free space on the back up device and compare it with the last full back I just did. If free space is less than twice the size of the last backup, I start removing the oldest back up directories (the ones created in the last step) until I have that much remaining.
- 1. Once a month, a start a new full back up from scratch. This is to guard against bad sectors in the disk, which can make older files become unreadable, and you would never know until you tried to restore it.
+ 1. Once a month, I start a new full back up from scratch. This is to guard against bad sectors in the disk, which can make older files become unreadable, and you would never know until you tried to restore it.
 
 ## Example scripts
 
