@@ -6,7 +6,7 @@ I had never used babaskha, so this is very unlikely to be a good example for any
 
 ## Main goals and outcomes
 
-The main reason I was revisiting my home backup scripts it that we've transitioned over the years from a household of two or three standard PCs to one with three laptops.
+The main reason I was revisiting my home backup scripts it that we've transitioned over the years from a household of two or three standard PCs, to one with three laptops.
 
 I used to mirror my family's home directories to an external drive. I used Time Machine on the Mac and [cron](http://manpages.ubuntu.com/manpages/focal/en/man3/cron.3tcl.html) and [rsync](http://manpages.ubuntu.com/manpages/focal/man1/rsync.1.html) on Linux. That mostly just worked.
 
@@ -30,7 +30,7 @@ You'll need a PC that's either always on or reliably turned on when it's needed.
 
 I use a 1TB SSD USB disk, mounted permanently at /media/backup. Here's [one random guide](https://www.techrepublic.com/article/how-to-properly-automount-a-drive-in-ubuntu-linux/) on how to mount an external disk automatically on boot.
 
-You will also need to set up password-less ssh access, both from the back up PC to the devices, and from the devices to the back up PC. This will allow the back up PC to run rsync to the devices, and also allow to the devices to kick off the process by running a small shell script via SSH. There are a lot of guides on the Internet for this, such as [this one](https://linuxize.com/post/how-to-setup-passwordless-ssh-login/).
+You will also need to set up password-less SSH access, both from the back up PC to the devices, and from the devices to the back up PC. This will allow the back up PC to run rsync to the devices, and also allow to the devices to kick off the process by running a small shell script via SSH. There are a lot of guides on the Internet for this, such as [this one](https://linuxize.com/post/how-to-setup-passwordless-ssh-login/).
 
 I don't use Windows at the moment and don't really mount network drives, either. That might be a good alternative to consider.
 
