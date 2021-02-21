@@ -65,7 +65,7 @@
   [backup]
   (as-> (io/file (format "%s/%s" base-path backup)) $
     (file-seq $)
-    (map #(fs/size %) $)
+    (map #(.length %) $)
     (reduce + $)))
 
 (defn check-month
