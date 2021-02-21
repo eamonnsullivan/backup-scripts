@@ -63,9 +63,9 @@
 (defn get-backup-usage
   "How much disk space is this backup using?"
   [backup]
-  (as-> (io/file (format "%s/%s" base-path backup)) $
+  (as-> (io/file (format "%s/%s/" base-path backup)) $
     (file-seq $)
-    (map #(.length %) $)
+    (map #(fs/size %) $)
     (reduce + $)))
 
 (defn check-month
