@@ -28,6 +28,20 @@
 (def month-formatter (DateTimeFormatter/ofPattern "yyyy-MM"))
 (def date-time-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-mm-s"))
 
+(defn retry
+  "Retry function f, n times and check whether it succeeded with the
+  predicate success?"
+  [f success? n]
+  (if (zero? n)
+    (f)
+    (let [result (f)]
+      (if (not (success? result))
+        (do
+          (println (format "Function failed with error [%s], retrying" (:err result)))
+          (Thread/sleep 30000)
+          (retry f success? (dec n)))
+        result))))
+
 (defn get-current-month
   "Get a string that includes the year and month."
   []
@@ -63,10 +77,11 @@
 (defn get-backup-usage
   "How much disk space is this backup using?"
   [backup]
-  (as-> (io/file (format "%s/%s/" base-path backup)) $
-    (file-seq $)
-    (map #(fs/size %) $)
-    (reduce + $)))
+  (let [path (format "%s/%s" base-path backup)
+        fsize (sh "du" "-sb" path)
+        outsize (:out fsize)]
+    (println "Size of current backup: " outsize)
+    (Integer/parseInt (string/trim outsize))))
 
 (defn check-month
   "Check whether we've started a new month. If we have, create a new
@@ -115,6 +130,8 @@
   [backup]
   (let [curr-used (get-backup-usage backup)
         est-need (* curr-used 2)]
+    (println "The current back up is using " curr-used)
+    (println "We're estimating that we need: " est-need)
     (loop [curr-free (.getFreeSpace (io/as-file base-path))]
       (if (> curr-free est-need)
         true
@@ -122,20 +139,6 @@
           (println "Not enough disk space available, so removing the oldest backup.")
           (delete-oldest-backup)
           (recur (.getFreeSpace (io/as-file base-path))))))))
-
-(defn retry
-  "Retry function f, n times and check whether it succeeded with the
-  predicate success?"
-  [f success? n]
-  (if (zero? n)
-    (f)
-    (let [result (f)]
-      (if (not (success? result))
-        (do
-          (println (format "Rsync failed with error [%s], retrying" (:err result)))
-          (Thread/sleep 30000)
-          (retry f success? (dec n)))
-        result))))
 
 (defn rsync!
   "The actual rsync of files from somewhere, to somewhere else. This
