@@ -133,6 +133,7 @@
     (println "The current back up is using " curr-used)
     (println "We're estimating that we need: " est-need)
     (loop [curr-free (.getFreeSpace (io/as-file base-path))]
+      (println "Current free space on this device: " curr-free)
       (if (> curr-free est-need)
         true
         (do
