@@ -2,7 +2,7 @@
 
 These are my current scripts for backing up three laptops around the house to a desktop PC. It is also a small experiment in using [babashka](https://github.com/babashka/babashka), a scripting flavour of the Clojure language.
 
-I had never used babaskha, so this is very unlikely to be a good example for anyone else. It's embarrassingly light on tests, for example. I just put one or two in to prove that tests are possible, but that's it. For much better information and examples, see babashka's [online book](https://book.babashka.org/#introduction).
+I had never used babaskha, so this is very unlikely to be a good example for anyone else. For much better information and examples, see babashka's [online book](https://book.babashka.org/#introduction).
 
 ## Main goals and outcomes
 

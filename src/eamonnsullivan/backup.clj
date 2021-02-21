@@ -23,24 +23,27 @@
             [clojure.string :as string]
             [babashka.fs :as fs]))
 
-(def base-path "/media/backup")
-(def rsync-command ["rsync" "-avzpH" "--partial" "--delete" "--exclude-from=/etc/rsync-backup-excludes.txt"])
+(def ^:dynamic *base-path* "/media/backup")
+(def ^:dynamic *rsync-command* ["rsync" "-avzpH" "--partial" "--delete" "--exclude-from=/etc/rsync-backup-excludes.txt"])
+
 (def month-formatter (DateTimeFormatter/ofPattern "yyyy-MM"))
 (def date-time-formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd_HH-mm-s"))
 
 (defn retry
   "Retry function f, n times and check whether it succeeded with the
   predicate success?"
-  [f success? n]
-  (if (zero? n)
+  ([f success? num-retries]
+   (retry f success? num-retries 30000))
+  ([f success? num-retries wait-time]
+  (if (zero? num-retries)
     (f)
     (let [result (f)]
       (if (not (success? result))
         (do
           (println (format "Function failed with error [%s], retrying" (:err result)))
-          (Thread/sleep 30000)
-          (retry f success? (dec n)))
-        result))))
+          (Thread/sleep wait-time)
+          (retry f success? (dec num-retries) wait-time))
+        result)))))
 
 (defn get-current-month
   "Get a string that includes the year and month."
@@ -57,7 +60,7 @@
   we can compare against. Used so that we can more easily tell when
   we've changed months since the last backup."
   [content backup]
-  (spit (format "%s/checkMonth_%s.txt" base-path backup) content))
+  (spit (format "%s/checkMonth_%s.txt" *base-path* backup) content))
 
 (defn new-month?
   "Predicate: Given the contents of this backup's checkMonth file, are
@@ -70,14 +73,14 @@
   "Remove the current named backup. This is normally done when we are
   starting the first backup of the month."
   [backup]
-  (let [target (format "%s/%s/*" base-path backup)]
+  (let [target (format "%s/%s" *base-path* backup)]
     (println "Removing: " target)
     (fs/delete-tree target)))
 
 (defn get-backup-usage
   "How much disk space is this backup using?"
   [backup]
-  (let [path (format "%s/%s" base-path backup)
+  (let [path (format "%s/%s" *base-path* backup)
         fsize (sh "du" "-sb" path)
         outsize (first (string/split (:out fsize) #"\s"))]
     (println "Size of current backup: " outsize)
@@ -87,11 +90,11 @@
   "Check whether we've started a new month. If we have, create a new
   backup from scratch."
   [backup]
-  (let [check (io/as-file (format "%s/checkMonth_%s.txt" base-path backup))
+  (let [check (io/as-file (format "%s/checkMonth_%s.txt" *base-path* backup))
         last (if (.exists check) (slurp check) nil)]
     (when (new-month? last)
-      (println (format "Starting a new monthly backup set for %s" (format "%s/%s" base-path backup)))
-      (let [backupdir (io/as-file (format "%s/%s" base-path backup))]
+      (println (format "Starting a new monthly backup set for %s" (format "%s/%s" *base-path* backup)))
+      (let [backupdir (io/as-file (format "%s/%s" *base-path* backup))]
         (when (.exists backupdir)
           (println "Existing backup found, so removing..."  )
           (delete-backup backup))
@@ -100,10 +103,9 @@
 
 (defn make-hard-link
   "Make a hard link of the current back up."
-  [backup]
-  (let [bdir (format "%s-%s" (.format (LocalDateTime/now) date-time-formatter) backup)
-        linkto (format "%s/old/%s" base-path bdir)
-        linkfrom (format "%s/%s/" base-path backup)]
+  [backup bdir]
+  (let [linkto (format "%s/old/%s" *base-path* bdir)
+        linkfrom (format "%s/%s/" *base-path* backup)]
     (io/make-parents (io/as-file linkto))
     (link linkfrom linkto)))
 
@@ -117,11 +119,11 @@
 (defn delete-oldest-backup
   "Find the oldest backup hard linked in <base-path>/old and remove it."
   []
-  (let [dir (.getName (oldest-dir (format "%s/old" base-path)))]
+  (let [dir (.getName (oldest-dir (format "%s/old" *base-path*)))]
     (println "Oldest backup: " dir)
     (if (not (nil? dir))
-      (sh "bash" "-c" (format "rm -rf %s/old/%s" base-path dir))
-      (throw (ex-info "Could not remove any more old backups!" {:base-path base-path})))))
+      (sh "bash" "-c" (format "rm -rf %s/old/%s" *base-path* dir))
+      (throw (ex-info "Could not remove any more old backups!" {:base-path *base-path*})))))
 
 (defn check-free
   "Check the free space on the backup device. If it isn't at
@@ -132,21 +134,21 @@
         est-need (* curr-used 2)]
     (println "The current back up is using " curr-used)
     (println "We're estimating that we need: " est-need)
-    (loop [curr-free (.getFreeSpace (io/as-file base-path))]
+    (loop [curr-free (.getFreeSpace (io/as-file *base-path*))]
       (println "Current free space on this device: " curr-free)
       (if (> curr-free est-need)
         true
         (do
           (println "Not enough disk space available, so removing the oldest backup.")
           (delete-oldest-backup)
-          (recur (.getFreeSpace (io/as-file base-path))))))))
+          (recur (.getFreeSpace (io/as-file *base-path*))))))))
 
 (defn rsync!
   "The actual rsync of files from somewhere, to somewhere else. This
   returns a map of the :exit code, standard output (:out) and any :err
   output."
   [backup-from backup-to]
-  (let [rsync-command (into [] (conj rsync-command backup-from (format "%s/%s" base-path backup-to)))]
+  (let [rsync-command (into [] (conj *rsync-command* backup-from (format "%s/%s" *base-path* backup-to)))]
     (println "Starting rsync: " (string/join " " rsync-command))
     (apply sh rsync-command)))
 
@@ -162,7 +164,7 @@
       (if (= 0 (:exit result))
         (do
           (println (:out result))
-          (make-hard-link backup-to)
+          (make-hard-link backup-to (format "%s-%s" (.format (LocalDateTime/now) date-time-formatter) backup-to))
           (check-free backup-to)
           (println (format "Successfully finished backup of %s at %s" backup-from (.toString (LocalDateTime/now)))))
         (do
@@ -178,5 +180,5 @@
   (import (java.time LocalDateTime))
   (require '[clojure.java.io :as io])
   (require '[clojure.java.shell :refer [sh]])
-  (def base-path "/home/eamonn/backup-test")
+  (def *base-path* "/home/eamonn/backup-test")
   )
