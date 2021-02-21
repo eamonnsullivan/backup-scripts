@@ -81,7 +81,7 @@
         fsize (sh "du" "-sb" path)
         outsize (first (string/split (:out fsize) #"\s"))]
     (println "Size of current backup: " outsize)
-    (Integer/parseInt (string/trim outsize))))
+    (bigint (string/trim outsize))))
 
 (defn check-month
   "Check whether we've started a new month. If we have, create a new
