@@ -79,7 +79,7 @@
   [backup]
   (let [path (format "%s/%s" base-path backup)
         fsize (sh "du" "-sb" path)
-        outsize (:out fsize)]
+        outsize (first (string/split (:out fsize) #"\s"))]
     (println "Size of current backup: " outsize)
     (Integer/parseInt (string/trim outsize))))
 
