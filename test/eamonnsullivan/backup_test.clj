@@ -93,9 +93,12 @@
         (is (.exists (fs/file tmp-dir "old/foo-123/" "content.txt")))))))
 
 (deftest test-oldest-dir
+  ;; My slower Linux system seems to need the sleeps...
   (let [tmp-dir (temp-dir)
         _ (fs/create-dir (fs/path tmp-dir "one"))
+        _ (Thread/sleep 10)
         _ (fs/create-dir (fs/path tmp-dir "two"))
+        _ (Thread/sleep 10)
         _ (fs/create-dir (fs/path tmp-dir "three"))]
     (testing "should find oldest directory by last modified"
       (is (= (fs/path tmp-dir "one")
@@ -105,7 +108,9 @@
   (let [tmp-dir (temp-dir)
         _ (fs/create-dir (fs/path tmp-dir "old"))
         _ (fs/create-dir (fs/path tmp-dir "old/" "one"))
+        _ (Thread/sleep 10)
         _ (fs/create-dir (fs/path tmp-dir "old/" "two"))
+        _ (Thread/sleep 10)
         _ (fs/create-dir (fs/path tmp-dir "old/" "three"))]
     (testing "should remove the old directory under /old"
       (binding [sut/*base-path* tmp-dir]
