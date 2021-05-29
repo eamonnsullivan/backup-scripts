@@ -26,7 +26,7 @@ Mostly, though, I like having control over my own data and I want to understand 
 
 ## Prerequisites
 
-You'll need a PC that's either always on or reliably turned on when it's needed. It will need plenty of disk storage. A Raspberry Pi with an attached USB disk would be ideal, but at the moment, I'm using our remaining desktop PC running Ubuntu. It's getting on 10 years old, but it suffices, and also comes in handy to share the printer and use the scanner.
+You'll need a PC that's either always on or reliably turned on when it's needed. It will need plenty of disk storage. A Raspberry Pi 4 with an attached USB disk is what I use at the moment. I installed the ARM port of Ubuntu server on it, and babashka now has ARM support as well.
 
 I use a 1TB SSD USB disk, mounted permanently at /media/backup. Here's [one random guide](https://www.techrepublic.com/article/how-to-properly-automount-a-drive-in-ubuntu-linux/) on how to mount an external disk automatically on boot.
 
