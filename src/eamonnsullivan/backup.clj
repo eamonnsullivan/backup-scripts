@@ -170,7 +170,7 @@
         (do
           (println (format "The backup of %s ended in an error: %s" backup-from (:err result)))
           (println "Not making a hard link or checking free space.")))
-      (:exit result))))
+      (System/exit (:exit result)))))
 
 (when (= *file* (System/getProperty "babashka.file"))
   (-main))
