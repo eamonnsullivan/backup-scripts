@@ -1,0 +1,12 @@
+{:paths ["src" "test"]
+
+ :deps {}
+
+ :tasks
+ {test
+  {:doc "Run the test suite"
+   :task (shell "bb test_runner.clj")}
+
+  backup
+  {:doc "Run backup: bb backup <backup-from> <backup-name>"
+   :task (apply shell "bb src/eamonnsullivan/backup.clj" *command-line-args*)}}}
