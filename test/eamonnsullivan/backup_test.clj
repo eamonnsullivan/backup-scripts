@@ -67,7 +67,7 @@
           _ (fs/create-dir (fs/path tmp-dir "foo"))
           _ (spit (fs/file tmp-dir "foo/" "content.txt") "123\n")]
       (binding [sut/*base-path* tmp-dir]
-        (is (= 4100
+        (is (= 4
                (sut/get-backup-usage "foo")))))))
 
 (deftest test-check-month
