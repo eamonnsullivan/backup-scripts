@@ -57,13 +57,18 @@
       (is (.exists (fs/file tmp-dir "bar")))
       (is (not (.exists (fs/file tmp-dir "foo")))))))
 
+(defn macos? []
+  (boolean (re-find #"(?i)mac" (System/getProperty "os.name"))))
+
 (deftest test-get-backup-usage
-  (let [tmp-dir (temp-dir)
-        _ (fs/create-dir (fs/path tmp-dir "foo"))
-        _ (spit (fs/file tmp-dir "foo/" "content.txt") "123\n")]
-    (binding [sut/*base-path* tmp-dir]
-      (is (= 4100
-             (sut/get-backup-usage "foo"))))))
+  (if (macos?)
+    (is true "Skipping GNU du -sb size assertion on macOS")
+    (let [tmp-dir (temp-dir)
+          _ (fs/create-dir (fs/path tmp-dir "foo"))
+          _ (spit (fs/file tmp-dir "foo/" "content.txt") "123\n")]
+      (binding [sut/*base-path* tmp-dir]
+        (is (= 4100
+               (sut/get-backup-usage "foo")))))))
 
 (deftest test-check-month
   (let [tmp-dir (temp-dir)
